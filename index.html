@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ImgStrip | Secure Metadata Remover</title>
+  <meta name="description" content="ImgStrip is a premium WASM-powered tool to safely strip EXIF, C2PA, and other tracking metadata from your images securely in your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="glass-bg"></div>
+  
+  <main class="app-container">
+    <header>
+      <h1>ImgStrip</h1>
+      <p>Clean your images securely via WebAssembly. Zero servers. 100% private.</p>
+    </header>
+
+    <section class="upload-section" id="drop-zone">
+      <div class="upload-content">
+        <div class="upload-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <h2>Drag & Drop Images</h2>
+        <p>or click to select files (JPG, PNG, WEBP, etc.)</p>
+        <input type="file" id="file-input" multiple accept="image/*" />
+      </div>
+    </section>
+
+    <section class="results-section" id="results" style="display: none;">
+      <div class="results-header">
+        <h3>Processed Files</h3>
+        <button id="download-all-btn" class="btn primary">Download All</button>
+      </div>
+      <div class="files-list" id="files-list">
+        <!-- Processed files will appear here -->
+      </div>
+    </section>
+  </main>
+
+  <script src="https://pl29456714.effectivecpmnetwork.com/fa/b3/53/fab35307be5179c0a7aad9647b212519.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
