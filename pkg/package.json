@@ -1,0 +1,15 @@
+{
+  "name": "imgstrip",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "imgstrip_bg.wasm",
+    "imgstrip.js",
+    "imgstrip.d.ts"
+  ],
+  "main": "imgstrip.js",
+  "types": "imgstrip.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
