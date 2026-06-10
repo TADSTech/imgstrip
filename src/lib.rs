@@ -4,9 +4,10 @@ use img_parts::{jpeg::Jpeg, png::Png, ImageEXIF};
 use std::io::Cursor;
 use image;
 
+mod video;
+
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
-    // This provides better error messages in debug mode.
     console_error_panic_hook::set_once();
     Ok(())
 }
@@ -42,7 +43,7 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
             if initial_exif {
                 jpeg.set_exif(None);
             }
-            
+
             let initial_len = jpeg.segments().len();
             jpeg.segments_mut().retain(|s| {
                 let marker = s.marker();
@@ -56,7 +57,7 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
                     true
                 }
             });
-            
+
             if initial_exif || jpeg.segments().len() != initial_len {
                 let mut out = Vec::new();
                 if jpeg.encoder().write_to(&mut out).is_ok() {
@@ -76,7 +77,7 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
             png.chunks_mut().retain(|chunk| {
                 let kind = chunk.kind();
                 let is_ancillary = (kind[0] & 0x20) != 0;
-                
+
                 if is_ancillary {
                     matches!(&kind, b"tRNS" | b"cHRM" | b"gAMA" | b"sBIT" | b"sRGB" | b"bKGD" | b"pHYs")
                 } else {
@@ -104,9 +105,9 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
                 "tga" => image::ImageFormat::Tga,
                 "qoi" => image::ImageFormat::Qoi,
                 "avif" => image::ImageFormat::Avif,
-                _ => image::ImageFormat::Png, // fallback
+                _ => image::ImageFormat::Png,
             };
-            
+
             if img.write_to(&mut out, format).is_ok() {
                 output_data = out.into_inner();
                 modified = true;
@@ -117,5 +118,19 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
     StripResult {
         data: output_data,
         modified,
+    }
+}
+
+#[wasm_bindgen]
+pub fn strip_video_metadata(input: &[u8], ext: &str) -> StripResult {
+    match video::strip_metadata(input, ext) {
+        Some(data) => StripResult {
+            data,
+            modified: true,
+        },
+        None => StripResult {
+            data: input.to_vec(),
+            modified: false,
+        },
     }
 }

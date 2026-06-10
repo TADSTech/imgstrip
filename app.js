@@ -1,4 +1,4 @@
-import init, { strip_image_metadata } from './pkg/imgstrip.js';
+import init, { strip_image_metadata, strip_video_metadata } from './pkg/imgstrip.js';
 
 let wasmReady = false;
 
@@ -68,6 +68,12 @@ async function handleFiles(e) {
   }
 }
 
+const VIDEO_EXTS = ['mp4', 'mov', 'm4v', '3gp', 'webm', 'mkv', 'avi'];
+
+function isVideoFile(ext) {
+  return VIDEO_EXTS.includes(ext);
+}
+
 async function processFile(file) {
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -77,7 +83,11 @@ async function processFile(file) {
   
   let result;
   try {
-    result = strip_image_metadata(bytes, ext);
+    if (isVideoFile(ext)) {
+      result = strip_video_metadata(bytes, ext);
+    } else {
+      result = strip_image_metadata(bytes, ext);
+    }
   } catch (err) {
     console.error("Error processing file", file.name, err);
     addFileToList(file.name, file.size, false, null);
@@ -93,7 +103,6 @@ async function processFile(file) {
     downloadUrl = URL.createObjectURL(blob);
     processedFiles.push({ name: file.name, url: downloadUrl });
   } else {
-    // Original file had no metadata or failed to strip
     const blob = new Blob([bytes], { type: file.type || 'application/octet-stream' });
     downloadUrl = URL.createObjectURL(blob);
   }
@@ -105,14 +114,19 @@ function addFileToList(name, size, wasModified, downloadUrl) {
   const item = document.createElement('div');
   item.className = 'file-item';
   
+  const extMatch = name.match(/\.([^.]+)$/);
+  const ext = extMatch ? extMatch[1].toLowerCase() : '';
+  const isVideo = VIDEO_EXTS.includes(ext);
+  
   const formattedSize = (size / 1024).toFixed(1) + ' KB';
   const statusClass = wasModified ? 'success' : '';
+  const badgeHtml = isVideo ? `<span class="file-type-badge">video</span>` : '';
   
   item.innerHTML = `
     <div class="file-info">
       <div class="file-status ${statusClass}"></div>
       <div>
-        <div class="file-name">${name}</div>
+        <div class="file-name">${name}${badgeHtml}</div>
         <div class="file-size">${formattedSize} ${wasModified ? '(Cleaned)' : '(No metadata found/Unsupported)'}</div>
       </div>
     </div>

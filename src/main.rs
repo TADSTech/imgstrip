@@ -18,6 +18,8 @@ use std::{
     path::Path,
 };
 
+mod video;
+
 use img_parts::{jpeg::Jpeg, png::Png, ImageEXIF};
 use bytes::Bytes;
 use image;
@@ -63,7 +65,7 @@ fn process_directory(path: &Path, app: &mut App) -> Result<(), Box<dyn Error>> {
         if file_path.is_file() {
             if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_lowercase();
-                let supported_exts = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "tif", "ico", "tga", "qoi", "avif"];
+                let supported_exts = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "tif", "ico", "tga", "qoi", "avif", "mp4", "mov", "m4v", "3gp", "webm", "mkv", "avi"];
                 if supported_exts.contains(&ext_lower.as_str()) {
                     app.scanned_files += 1;
                     match strip_metadata(&file_path) {
@@ -92,6 +94,15 @@ fn process_directory(path: &Path, app: &mut App) -> Result<(), Box<dyn Error>> {
 fn strip_metadata(path: &Path) -> Result<bool, Box<dyn Error>> {
     let input = fs::read(path)?;
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+
+    let video_exts = ["mp4", "mov", "m4v", "3gp", "webm", "mkv", "avi"];
+    if video_exts.contains(&ext.as_str()) {
+        if let Some(stripped) = video::strip_metadata(&input, &ext) {
+            fs::write(path, stripped)?;
+            return Ok(true);
+        }
+        return Ok(false);
+    }
 
     let mut modified = false;
 

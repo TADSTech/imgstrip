@@ -171,6 +171,18 @@ header p {
   font-size: 0.9rem;
 }
 
+.file-type-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.5rem;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
 .file-size {
   color: var(--accent);
   font-size: 0.75rem;
