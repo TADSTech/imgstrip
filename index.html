@@ -15,31 +15,152 @@
     <header>
       <img src="./logo.png" alt="ImgStrip Logo" class="logo-img" id="app-logo" />
       <h1>ImgStrip</h1>
-      <p>Clean images &amp; videos. Zero metadata. Zero tracking.</p>
+      <p>Clean media. Zero metadata. Zero tracking.</p>
     </header>
 
-    <section class="upload-section" id="drop-zone">
-      <div class="upload-content">
-        <div class="upload-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="strip">Strip</button>
+      <button class="tab-btn" data-tab="humanize">Humanize</button>
+      <button class="tab-btn" data-tab="watermark">Watermark</button>
+    </nav>
+
+    <!-- Strip Tab -->
+    <section id="tab-strip" class="tab-content active">
+      <div class="upload-section" id="drop-zone">
+        <div class="upload-content">
+          <div class="upload-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <h2>Drag & Drop Media</h2>
+          <p>or click to select files (JPG, PNG, WEBP, MP4, MOV, etc.)</p>
+          <input type="file" id="file-input" multiple accept="image/*,video/*" />
         </div>
-        <h2>Drag & Drop Media</h2>
-        <p>or click to select files (JPG, PNG, WEBP, MP4, MOV, etc.)</p>
-        <input type="file" id="file-input" multiple accept="image/*,video/*" />
+      </div>
+
+      <section class="results-section" id="results" style="display: none;">
+        <div class="results-header">
+          <h3>Processed Files</h3>
+          <button id="download-all-btn" class="btn primary">Download All</button>
+        </div>
+        <div class="files-list" id="files-list"></div>
+      </section>
+    </section>
+
+    <!-- Humanize Tab -->
+    <section id="tab-humanize" class="tab-content">
+      <div class="tool-section">
+        <div class="tool-section-header">
+          <h3>Text Humanizer</h3>
+          <p>Remove AI writing patterns — make text sound natural and human.</p>
+        </div>
+
+        <div class="humanize-controls">
+          <label class="control-group">
+            <span>Aggressiveness</span>
+            <div class="radio-group">
+              <label><input type="radio" name="aggressiveness" value="mild"> Mild</label>
+              <label><input type="radio" name="aggressiveness" value="moderate" checked> Moderate</label>
+              <label><input type="radio" name="aggressiveness" value="aggressive"> Aggressive</label>
+            </div>
+          </label>
+        </div>
+
+        <div class="humanize-editor">
+          <div class="editor-pane">
+            <div class="pane-header">
+              <span>Input</span>
+              <button id="humanize-paste-btn" class="btn-small">Paste</button>
+            </div>
+            <textarea id="humanize-input" class="humanize-textarea" placeholder="Paste AI-generated text here..."></textarea>
+          </div>
+          <div class="editor-actions">
+            <button id="humanize-btn" class="btn primary">Humanize →</button>
+          </div>
+          <div class="editor-pane">
+            <div class="pane-header">
+              <span>Output</span>
+              <button id="humanize-copy-btn" class="btn-small">Copy</button>
+              <button id="humanize-download-btn" class="btn-small">Download .txt</button>
+            </div>
+            <textarea id="humanize-output" class="humanize-textarea" readonly placeholder="Humanized text appears here..."></textarea>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="results-section" id="results" style="display: none;">
-      <div class="results-header">
-        <h3>Processed Files</h3>
-        <button id="download-all-btn" class="btn primary">Download All</button>
-      </div>
-      <div class="files-list" id="files-list">
-        <!-- Processed files will appear here -->
+    <!-- Watermark Tab -->
+    <section id="tab-watermark" class="tab-content">
+      <div class="tool-section">
+        <div class="tool-section-header">
+          <h3>Watermark Remover</h3>
+          <p>Remove semi-transparent watermarks from images. All processing happens in your browser.</p>
+        </div>
+
+        <div class="watermark-controls">
+          <div class="control-row">
+            <label class="control-group">
+              <span>Method</span>
+              <select id="wm-method">
+                <option value="spatial">Spatial Inpainting</option>
+                <option value="fft">FFT Frequency Filter</option>
+              </select>
+            </label>
+            <label class="control-group">
+              <span>Threshold</span>
+              <input type="range" id="wm-threshold" min="10" max="100" value="40" />
+              <span id="wm-threshold-val">40</span>
+            </label>
+          </div>
+          <div class="control-row">
+            <label class="control-group">
+              <span>Window Size</span>
+              <input type="range" id="wm-window" min="3" max="21" value="7" step="2" />
+              <span id="wm-window-val">7</span>
+            </label>
+            <label class="control-group">
+              <span>Inpaint Radius</span>
+              <input type="range" id="wm-radius" min="1" max="20" value="5" />
+              <span id="wm-radius-val">5</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="watermark-upload">
+          <div class="upload-section upload-section--inline" id="wm-drop-zone">
+            <div class="upload-content">
+              <div class="upload-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <p>Drop an image or click to select</p>
+              <input type="file" id="wm-file-input" accept="image/*" />
+            </div>
+          </div>
+        </div>
+
+        <div class="watermark-preview" id="wm-preview" style="display: none;">
+          <div class="preview-container">
+            <div class="preview-pane">
+              <h4>Before</h4>
+              <canvas id="wm-canvas-before"></canvas>
+            </div>
+            <div class="preview-pane">
+              <h4>After</h4>
+              <canvas id="wm-canvas-after"></canvas>
+            </div>
+          </div>
+          <div class="preview-actions">
+            <button id="wm-process-btn" class="btn primary">Remove Watermark</button>
+            <button id="wm-download-btn" class="btn">Download Cleaned</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>

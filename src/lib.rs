@@ -5,6 +5,7 @@ use std::io::Cursor;
 use image;
 
 mod video;
+mod watermark;
 
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
@@ -133,4 +134,18 @@ pub fn strip_video_metadata(input: &[u8], ext: &str) -> StripResult {
             modified: false,
         },
     }
+}
+
+#[wasm_bindgen]
+pub fn remove_watermark(
+    input: &[u8],
+    ext: &str,
+    method: &str,
+    threshold: u32,
+    window: u32,
+    radius: u32,
+) -> StripResult {
+    let data = watermark::remove_watermark(input, ext, method, threshold, window, radius);
+    let modified = data.len() != input.len() || data != input;
+    StripResult { data, modified }
 }
