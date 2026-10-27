@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "vite",
     "build:wasm": "wasm-pack build --target web",
-    "build": "wasm-pack build --target web && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^5.4.21",
-    "wasm-pack": "^0.15.0"
+    "vite": "^5.4.21"
   }
 }
