@@ -29,18 +29,80 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// ===== Video method hint =====
+// ===== Service Worker & Offline Caching =====
+const CACHE_NAME = 'nanlabel-cache-v2';
+const FFMPEG_CORE_JS = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js';
+const FFMPEG_CORE_WASM = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm';
+
+if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.protocol === 'https:')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('[SW] Registered:', reg.scope);
+      const badge = document.getElementById('offline-badge');
+      if (badge) {
+        badge.classList.add('cached');
+        badge.textContent = 'Offline Ready';
+      }
+    }).catch((err) => {
+      console.warn('[SW] Failed:', err);
+    });
+  });
+}
+
+// ===== Video method hint & Cache row =====
 const videoMethodSelect = document.getElementById('video-method');
 const videoMethodHint = document.getElementById('video-method-hint');
+const cacheRow = document.getElementById('cache-row');
+const cacheFfmpegBtn = document.getElementById('cache-ffmpeg-btn');
+const cacheFfmpegStatus = document.getElementById('cache-ffmpeg-status');
 
 const HINTS = {
-  'metadata-only': 'Metadata Only: removes embedded tags without re-encoding. Instant and lossless.',
-  'ffmpeg-deep': 'FFmpeg Deep Clean: uses ffmpeg.wasm to run -map_metadata -1 -map_chapters -1, stripping C2PA manifests with zero quality loss.',
-  'synthid': 'SynthID Perturbation: applies sub-pixel frequency shifts across every video frame to disrupt invisible AI watermarks. Slower but thorough.',
+  'metadata-only': 'Metadata Only: removes embedded tags without re-encoding. Instant, lossless, zero extra downloads.',
+  'ffmpeg-deep': 'FFmpeg Deep Clean: runs -map_metadata -1 -map_chapters -1 in browser to strip C2PA manifests without quality loss.',
+  'synthid': 'SynthID Perturbation: applies sub-pixel frequency shifts across every video frame to disrupt invisible AI watermarks.',
 };
 
+async function updateFFmpegCacheStatus() {
+  if (!('caches' in window)) return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const hasJs = await cache.match(FFMPEG_CORE_JS);
+    const hasWasm = await cache.match(FFMPEG_CORE_WASM);
+    if (hasJs && hasWasm) {
+      cacheFfmpegStatus.textContent = '✓ Saved in browser cache (Ready offline with 0 MB network)';
+      cacheFfmpegBtn.style.display = 'none';
+    } else {
+      cacheFfmpegStatus.textContent = 'Not cached yet (~31MB one-time download, then stored permanently)';
+      cacheFfmpegBtn.style.display = 'inline-block';
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
 videoMethodSelect.addEventListener('change', () => {
-  videoMethodHint.textContent = HINTS[videoMethodSelect.value] || '';
+  const val = videoMethodSelect.value;
+  videoMethodHint.textContent = HINTS[val] || '';
+  if (val === 'ffmpeg-deep' || val === 'synthid') {
+    cacheRow.style.display = 'flex';
+    updateFFmpegCacheStatus();
+  } else {
+    cacheRow.style.display = 'none';
+  }
+});
+
+cacheFfmpegBtn.addEventListener('click', async () => {
+  cacheFfmpegBtn.disabled = true;
+  cacheFfmpegBtn.textContent = 'Downloading to cache...';
+  try {
+    await loadFFmpeg();
+    await updateFFmpegCacheStatus();
+    showNotification('FFmpeg engine saved to browser cache! Works 100% offline now.');
+  } catch (err) {
+    showNotification('Failed to download FFmpeg: ' + err.message);
+    cacheFfmpegBtn.disabled = false;
+    cacheFfmpegBtn.textContent = 'Pre-download FFmpeg for Offline (~31MB)';
+  }
 });
 
 // ===== Strip Tab =====
@@ -115,6 +177,31 @@ function getMediaType(ext) {
   return 'image';
 }
 
+async function getCachedBlobURL(url, label, statusText) {
+  if ('caches' in window) {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const matched = await cache.match(url);
+      if (matched) {
+        console.log(`[Cache] Loaded ${label} from browser cache.`);
+        const blob = await matched.blob();
+        return URL.createObjectURL(blob);
+      }
+      if (statusText) statusText.textContent = `Downloading ${label} to browser cache (one-time only)...`;
+      console.log(`[Cache] Downloading & caching ${label} for offline use...`);
+      const res = await fetch(url);
+      if (res.ok) {
+        await cache.put(url, res.clone());
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+      }
+    } catch (err) {
+      console.warn(`[Cache] CacheStorage error for ${url}:`, err);
+    }
+  }
+  return url;
+}
+
 // ===== FFmpeg.wasm lazy loader =====
 async function loadFFmpeg() {
   if (ffmpegInstance) return ffmpegInstance;
@@ -130,7 +217,7 @@ async function loadFFmpeg() {
   const statusText = document.getElementById('ffmpeg-status-text');
   const progressFill = document.getElementById('ffmpeg-progress');
   statusEl.style.display = 'block';
-  statusText.textContent = 'Loading FFmpeg engine (~30MB, one-time download)...';
+  statusText.textContent = 'Checking browser cache for FFmpeg engine...';
 
   try {
     const { FFmpeg } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/+esm');
@@ -147,13 +234,18 @@ async function loadFFmpeg() {
       console.log('[ffmpeg]', message);
     });
 
+    const coreBlobURL = await getCachedBlobURL(FFMPEG_CORE_JS, 'FFmpeg loader', statusText);
+    const wasmBlobURL = await getCachedBlobURL(FFMPEG_CORE_WASM, 'FFmpeg core (31MB)', statusText);
+
+    statusText.textContent = 'Initializing WebAssembly runtime...';
     await ffmpeg.load({
-      coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-      wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
+      coreURL: coreBlobURL,
+      wasmURL: wasmBlobURL,
     });
 
     ffmpegInstance = { ffmpeg, fetchFile };
-    statusText.textContent = 'FFmpeg ready.';
+    statusText.textContent = 'FFmpeg engine ready (saved to browser cache).';
+    await updateFFmpegCacheStatus();
     setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
   } catch (err) {
     console.error('Failed to load FFmpeg:', err);

@@ -35,10 +35,34 @@ header {
   padding-bottom: 1rem;
 }
 
+.header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.offline-badge {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--text-main);
+  color: var(--text-main);
+  background: transparent;
+}
+
+.offline-badge.cached {
+  background: var(--text-main);
+  color: var(--bg-color);
+}
+
 .logo-img {
   width: 64px;
   height: 64px;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   filter: grayscale(100%);
 }
 
@@ -440,6 +464,13 @@ header p {
   font-size: 0.75rem;
   color: var(--accent);
   margin-top: 0.3rem;
+}
+
+.cache-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .format-hint {

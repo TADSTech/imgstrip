@@ -8,12 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <main class="app-container">
     <header>
-      <img src="./logo.png" alt="NanLabel Logo" class="logo-img" id="app-logo" />
+      <div class="header-title-row">
+        <img src="./logo.png" alt="NanLabel Logo" class="logo-img" id="app-logo" />
+        <span class="offline-badge" id="offline-badge">Offline Ready</span>
+      </div>
       <h1>NanLabel</h1>
       <p>Strip all metadata. Images. Audio. Video. 100% offline.</p>
     </header>
@@ -55,6 +59,10 @@
           </label>
         </div>
         <p class="option-hint" id="video-method-hint">Metadata Only: removes embedded tags without re-encoding.</p>
+        <div class="cache-row" id="cache-row" style="margin-top: 0.8rem; display: none;">
+          <button id="cache-ffmpeg-btn" class="btn-small">Pre-download FFmpeg for Offline (~31MB)</button>
+          <span id="cache-ffmpeg-status" class="option-hint"></span>
+        </div>
       </div>
 
       <section class="results-section" id="results" style="display: none;">
