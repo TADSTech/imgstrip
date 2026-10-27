@@ -13,6 +13,8 @@ export function main_js(): void;
 
 export function remove_watermark(input: Uint8Array, ext: string, method: string, threshold: number, window: number, radius: number): StripResult;
 
+export function strip_audio_metadata(input: Uint8Array, ext: string): StripResult;
+
 export function strip_image_metadata(input: Uint8Array, ext: string): StripResult;
 
 export function strip_video_metadata(input: Uint8Array, ext: string): StripResult;
@@ -24,6 +26,7 @@ export interface InitOutput {
     readonly __wbg_stripresult_free: (a: number, b: number) => void;
     readonly main_js: () => void;
     readonly remove_watermark: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
+    readonly strip_audio_metadata: (a: number, b: number, c: number, d: number) => number;
     readonly strip_image_metadata: (a: number, b: number, c: number, d: number) => number;
     readonly strip_video_metadata: (a: number, b: number, c: number, d: number) => number;
     readonly stripresult_data: (a: number) => [number, number];

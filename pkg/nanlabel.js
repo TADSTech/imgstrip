@@ -1,4 +1,4 @@
-/* @ts-self-types="./imgstrip.d.ts" */
+/* @ts-self-types="./nanlabel.d.ts" */
 
 export class StripResult {
     static __wrap(ptr) {
@@ -57,6 +57,20 @@ export function remove_watermark(input, ext, method, threshold, window, radius) 
     const ptr2 = passStringToWasm0(method, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len2 = WASM_VECTOR_LEN;
     const ret = wasm.remove_watermark(ptr0, len0, ptr1, len1, ptr2, len2, threshold, window, radius);
+    return StripResult.__wrap(ret);
+}
+
+/**
+ * @param {Uint8Array} input
+ * @param {string} ext
+ * @returns {StripResult}
+ */
+export function strip_audio_metadata(input, ext) {
+    const ptr0 = passArray8ToWasm0(input, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(ext, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.strip_audio_metadata(ptr0, len0, ptr1, len1);
     return StripResult.__wrap(ret);
 }
 
@@ -127,7 +141,7 @@ function __wbg_get_imports() {
     };
     return {
         __proto__: null,
-        "./imgstrip_bg.js": import0,
+        "./nanlabel_bg.js": import0,
     };
 }
 
@@ -312,7 +326,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('imgstrip_bg.wasm', import.meta.url);
+        module_or_path = new URL('nanlabel_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

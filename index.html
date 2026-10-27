@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ImgStrip | Secure Metadata Remover</title>
-  <meta name="description" content="ImgStrip is a premium WASM-powered tool to safely strip EXIF, C2PA, and other tracking metadata from your images and videos securely in your browser." />
+  <title>NanLabel | Strip Metadata from Images, Audio & Video</title>
+  <meta name="description" content="NanLabel is a FOSS tool that strips EXIF, C2PA, ID3, SynthID, and all tracking metadata from images, audio, and video — 100% in your browser. No servers. No uploads." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,9 +13,9 @@
 <body>
   <main class="app-container">
     <header>
-      <img src="./logo.png" alt="ImgStrip Logo" class="logo-img" id="app-logo" />
-      <h1>ImgStrip</h1>
-      <p>Clean media. Zero metadata. Zero tracking.</p>
+      <img src="./logo.png" alt="NanLabel Logo" class="logo-img" id="app-logo" />
+      <h1>NanLabel</h1>
+      <p>Strip all metadata. Images. Audio. Video. 100% offline.</p>
     </header>
 
     <nav class="tabs">
@@ -36,9 +36,25 @@
             </svg>
           </div>
           <h2>Drag & Drop Media</h2>
-          <p>or click to select files (JPG, PNG, WEBP, MP4, MOV, etc.)</p>
-          <input type="file" id="file-input" multiple accept="image/*,video/*" />
+          <p>Images, Audio, or Video — all processed locally</p>
+          <p class="format-hint">JPG · PNG · WEBP · GIF · MP3 · FLAC · WAV · OGG · M4A · MP4 · MOV · MKV · AVI</p>
+          <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.mp3,.flac,.wav,.ogg,.oga,.opus,.m4a,.m4b,.aac" />
         </div>
+      </div>
+
+      <!-- Video / SynthID Options -->
+      <div class="strip-options" id="strip-options">
+        <div class="option-group">
+          <label class="control-group">
+            <span>Video Processing</span>
+            <select id="video-method">
+              <option value="metadata-only">Metadata Only (instant, lossless)</option>
+              <option value="ffmpeg-deep">FFmpeg Deep Clean (C2PA + chapters)</option>
+              <option value="synthid">SynthID Perturbation (frame-level)</option>
+            </select>
+          </label>
+        </div>
+        <p class="option-hint" id="video-method-hint">Metadata Only: removes embedded tags without re-encoding.</p>
       </div>
 
       <section class="results-section" id="results" style="display: none;">
@@ -48,6 +64,14 @@
         </div>
         <div class="files-list" id="files-list"></div>
       </section>
+
+      <!-- ffmpeg.wasm progress -->
+      <div class="ffmpeg-status" id="ffmpeg-status" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill" id="ffmpeg-progress"></div>
+        </div>
+        <p id="ffmpeg-status-text">Loading FFmpeg engine...</p>
+      </div>
     </section>
 
     <!-- Humanize Tab -->

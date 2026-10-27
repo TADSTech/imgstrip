@@ -85,7 +85,7 @@ export async function initWatermarkUI() {
       const rad = parseInt(radius.value);
       const meth = method.value;
 
-      const { remove_watermark } = await import('../pkg/imgstrip.js');
+      const { remove_watermark } = await import('../pkg/nanlabel.js');
 
       const result = remove_watermark(bytes, ext, meth, thresh, win, rad);
       const resultBytes = result.data;

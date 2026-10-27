@@ -1,14 +1,14 @@
 {
-  "name": "imgstrip",
+  "name": "nanlabel",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "files": [
-    "imgstrip_bg.wasm",
-    "imgstrip.js",
-    "imgstrip.d.ts"
+    "nanlabel_bg.wasm",
+    "nanlabel.js",
+    "nanlabel.d.ts"
   ],
-  "main": "imgstrip.js",
-  "types": "imgstrip.d.ts",
+  "main": "nanlabel.js",
+  "types": "nanlabel.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

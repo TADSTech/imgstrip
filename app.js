@@ -1,14 +1,16 @@
-import init, { strip_image_metadata, strip_video_metadata } from './pkg/imgstrip.js';
+import init, { strip_image_metadata, strip_video_metadata, strip_audio_metadata } from './pkg/nanlabel.js';
 import { humanize } from './js/humanizer.js';
 import { initWatermarkUI } from './js/watermark.js';
 
 let wasmReady = false;
+let ffmpegInstance = null;
+let ffmpegLoading = false;
 
 async function setup() {
   try {
     await init();
     wasmReady = true;
-    console.log("WASM Initialized");
+    console.log("NanLabel WASM Initialized");
   } catch (err) {
     console.error("Failed to initialize WASM:", err);
   }
@@ -25,6 +27,20 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = document.getElementById(`tab-${btn.dataset.tab}`);
     if (tab) tab.classList.add('active');
   });
+});
+
+// ===== Video method hint =====
+const videoMethodSelect = document.getElementById('video-method');
+const videoMethodHint = document.getElementById('video-method-hint');
+
+const HINTS = {
+  'metadata-only': 'Metadata Only: removes embedded tags without re-encoding. Instant and lossless.',
+  'ffmpeg-deep': 'FFmpeg Deep Clean: uses ffmpeg.wasm to run -map_metadata -1 -map_chapters -1, stripping C2PA manifests with zero quality loss.',
+  'synthid': 'SynthID Perturbation: applies sub-pixel frequency shifts across every video frame to disrupt invisible AI watermarks. Slower but thorough.',
+};
+
+videoMethodSelect.addEventListener('change', () => {
+  videoMethodHint.textContent = HINTS[videoMethodSelect.value] || '';
 });
 
 // ===== Strip Tab =====
@@ -68,7 +84,7 @@ function handleDrop(e) {
 
 async function handleFiles(e) {
   if (!wasmReady) {
-    alert("Please wait for the WASM module to load.");
+    showNotification("Please wait for the WASM module to load.");
     return;
   }
 
@@ -83,9 +99,136 @@ async function handleFiles(e) {
 }
 
 const VIDEO_EXTS = ['mp4', 'mov', 'm4v', '3gp', 'webm', 'mkv', 'avi'];
+const AUDIO_EXTS = ['mp3', 'flac', 'wav', 'wave', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'm4b', 'm4p'];
 
 function isVideoFile(ext) {
   return VIDEO_EXTS.includes(ext);
+}
+
+function isAudioFile(ext) {
+  return AUDIO_EXTS.includes(ext);
+}
+
+function getMediaType(ext) {
+  if (isVideoFile(ext)) return 'video';
+  if (isAudioFile(ext)) return 'audio';
+  return 'image';
+}
+
+// ===== FFmpeg.wasm lazy loader =====
+async function loadFFmpeg() {
+  if (ffmpegInstance) return ffmpegInstance;
+  if (ffmpegLoading) {
+    // Wait for existing load
+    while (ffmpegLoading) {
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return ffmpegInstance;
+  }
+  ffmpegLoading = true;
+  const statusEl = document.getElementById('ffmpeg-status');
+  const statusText = document.getElementById('ffmpeg-status-text');
+  const progressFill = document.getElementById('ffmpeg-progress');
+  statusEl.style.display = 'block';
+  statusText.textContent = 'Loading FFmpeg engine (~30MB, one-time download)...';
+
+  try {
+    const { FFmpeg } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/+esm');
+    const { fetchFile } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/+esm');
+    const ffmpeg = new FFmpeg();
+
+    ffmpeg.on('progress', ({ progress }) => {
+      const pct = Math.round(progress * 100);
+      progressFill.style.width = `${pct}%`;
+      statusText.textContent = `Processing... ${pct}%`;
+    });
+
+    ffmpeg.on('log', ({ message }) => {
+      console.log('[ffmpeg]', message);
+    });
+
+    await ffmpeg.load({
+      coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+      wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
+    });
+
+    ffmpegInstance = { ffmpeg, fetchFile };
+    statusText.textContent = 'FFmpeg ready.';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
+  } catch (err) {
+    console.error('Failed to load FFmpeg:', err);
+    statusText.textContent = 'FFmpeg failed to load. Falling back to metadata-only mode.';
+  }
+  ffmpegLoading = false;
+  return ffmpegInstance;
+}
+
+// ===== FFmpeg deep clean =====
+async function ffmpegDeepClean(fileBytes, fileName) {
+  const ff = await loadFFmpeg();
+  if (!ff) return null;
+  const { ffmpeg, fetchFile } = ff;
+
+  const inputName = 'input_' + fileName;
+  const outputName = 'output_' + fileName;
+
+  await ffmpeg.writeFile(inputName, await fetchFile(new Blob([fileBytes])));
+  await ffmpeg.exec([
+    '-i', inputName,
+    '-map_metadata', '-1',
+    '-map_chapters', '-1',
+    '-c:v', 'copy',
+    '-c:a', 'copy',
+    outputName,
+  ]);
+
+  const data = await ffmpeg.readFile(outputName);
+  await ffmpeg.deleteFile(inputName);
+  await ffmpeg.deleteFile(outputName);
+  return new Uint8Array(data);
+}
+
+// ===== SynthID Perturbation (Canvas-based) =====
+async function perturbSynthID(fileBytes, fileName) {
+  // Step 1: Use ffmpeg to extract frames, perturb each, re-encode
+  const ff = await loadFFmpeg();
+  if (!ff) return null;
+  const { ffmpeg, fetchFile } = ff;
+
+  const statusText = document.getElementById('ffmpeg-status-text');
+  const statusEl = document.getElementById('ffmpeg-status');
+  statusEl.style.display = 'block';
+
+  const inputName = 'input_' + fileName;
+  const outputName = 'output_synth_' + fileName;
+
+  await ffmpeg.writeFile(inputName, await fetchFile(new Blob([fileBytes])));
+
+  // Apply sub-pixel perturbation via ffmpeg video filter
+  // This applies a very subtle noise + slight color shift that disrupts SynthID patterns
+  // while being visually imperceptible
+  statusText.textContent = 'Applying SynthID perturbation (this may take a while)...';
+
+  await ffmpeg.exec([
+    '-i', inputName,
+    '-map_metadata', '-1',
+    '-map_chapters', '-1',
+    '-vf', 'noise=alls=2:allf=t+u,hue=h=0.3,unsharp=3:3:0.3:3:3:0.0',
+    '-c:v', 'libx264',
+    '-preset', 'fast',
+    '-crf', '18',
+    '-c:a', 'copy',
+    outputName,
+  ]);
+
+  const data = await ffmpeg.readFile(outputName);
+  await ffmpeg.deleteFile(inputName);
+  await ffmpeg.deleteFile(outputName);
+
+  statusText.textContent = 'SynthID perturbation complete.';
+  setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+
+  return new Uint8Array(data);
 }
 
 async function processFile(file) {
@@ -94,17 +237,44 @@ async function processFile(file) {
 
   const extMatch = file.name.match(/\.([^.]+)$/);
   const ext = extMatch ? extMatch[1].toLowerCase() : '';
+  const mediaType = getMediaType(ext);
 
   let result;
   try {
-    if (isVideoFile(ext)) {
-      result = strip_video_metadata(bytes, ext);
+    if (mediaType === 'video') {
+      const method = videoMethodSelect.value;
+
+      if (method === 'ffmpeg-deep') {
+        const cleanedBytes = await ffmpegDeepClean(bytes, file.name);
+        if (cleanedBytes) {
+          result = { data: cleanedBytes, modified: true };
+        } else {
+          // Fallback to WASM metadata-only
+          const r = strip_video_metadata(bytes, ext);
+          result = { data: r.data, modified: r.modified };
+        }
+      } else if (method === 'synthid') {
+        const perturbedBytes = await perturbSynthID(bytes, file.name);
+        if (perturbedBytes) {
+          result = { data: perturbedBytes, modified: true };
+        } else {
+          const r = strip_video_metadata(bytes, ext);
+          result = { data: r.data, modified: r.modified };
+        }
+      } else {
+        const r = strip_video_metadata(bytes, ext);
+        result = { data: r.data, modified: r.modified };
+      }
+    } else if (mediaType === 'audio') {
+      const r = strip_audio_metadata(bytes, ext);
+      result = { data: r.data, modified: r.modified };
     } else {
-      result = strip_image_metadata(bytes, ext);
+      const r = strip_image_metadata(bytes, ext);
+      result = { data: r.data, modified: r.modified };
     }
   } catch (err) {
     console.error("Error processing file", file.name, err);
-    addFileToList(file.name, file.size, false, null);
+    addFileToList(file.name, file.size, false, null, mediaType);
     return;
   }
 
@@ -121,20 +291,18 @@ async function processFile(file) {
     downloadUrl = URL.createObjectURL(blob);
   }
 
-  addFileToList(file.name, file.size, wasModified, downloadUrl);
+  addFileToList(file.name, file.size, wasModified, downloadUrl, mediaType);
 }
 
-function addFileToList(name, size, wasModified, downloadUrl) {
+function addFileToList(name, size, wasModified, downloadUrl, mediaType) {
   const item = document.createElement('div');
   item.className = 'file-item';
 
-  const extMatch = name.match(/\.([^.]+)$/);
-  const ext = extMatch ? extMatch[1].toLowerCase() : '';
-  const isVideo = VIDEO_EXTS.includes(ext);
-
-  const formattedSize = (size / 1024).toFixed(1) + ' KB';
+  const formattedSize = size > 1048576
+    ? (size / 1048576).toFixed(1) + ' MB'
+    : (size / 1024).toFixed(1) + ' KB';
   const statusClass = wasModified ? 'success' : '';
-  const badgeHtml = isVideo ? `<span class="file-type-badge">video</span>` : '';
+  const badgeHtml = `<span class="file-type-badge">${mediaType}</span>`;
 
   item.innerHTML = `
     <div class="file-info">
@@ -163,6 +331,23 @@ downloadAllBtn.addEventListener('click', () => {
   });
 });
 
+// ===== Simple notification (replaces alert) =====
+function showNotification(message) {
+  const existing = document.querySelector('.nanlabel-notification');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.className = 'nanlabel-notification';
+  el.textContent = message;
+  el.style.cssText = `
+    position: fixed; top: 1rem; right: 1rem; padding: 0.8rem 1.5rem;
+    background: #000; color: #fff; font-family: Inter, sans-serif;
+    font-size: 0.85rem; z-index: 9999; border: 1px solid #fff;
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
 // ===== Humanize Tab =====
 const humanizeInput = document.getElementById('humanize-input');
 const humanizeOutput = document.getElementById('humanize-output');
@@ -181,7 +366,7 @@ humanizePasteBtn.addEventListener('click', async () => {
   try {
     humanizeInput.value = await navigator.clipboard.readText();
   } catch {
-    alert('Could not read clipboard. Please paste manually (Ctrl+V).');
+    showNotification('Could not read clipboard. Please paste manually (Ctrl+V).');
   }
 });
 
@@ -192,7 +377,7 @@ humanizeCopyBtn.addEventListener('click', async () => {
     humanizeCopyBtn.textContent = 'Copied!';
     setTimeout(() => { humanizeCopyBtn.textContent = 'Copy'; }, 1500);
   } catch {
-    alert('Could not copy to clipboard.');
+    showNotification('Could not copy to clipboard.');
   }
 });
 

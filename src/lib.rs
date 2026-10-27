@@ -5,6 +5,7 @@ use std::io::Cursor;
 use image;
 
 mod video;
+mod audio;
 mod watermark;
 
 #[wasm_bindgen(start)]
@@ -125,6 +126,20 @@ pub fn strip_image_metadata(input: &[u8], ext: &str) -> StripResult {
 #[wasm_bindgen]
 pub fn strip_video_metadata(input: &[u8], ext: &str) -> StripResult {
     match video::strip_metadata(input, ext) {
+        Some(data) => StripResult {
+            data,
+            modified: true,
+        },
+        None => StripResult {
+            data: input.to_vec(),
+            modified: false,
+        },
+    }
+}
+
+#[wasm_bindgen]
+pub fn strip_audio_metadata(input: &[u8], ext: &str) -> StripResult {
+    match audio::strip_metadata(input, ext) {
         Some(data) => StripResult {
             data,
             modified: true,
